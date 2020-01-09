@@ -1,0 +1,17 @@
+[package]
+name = "gpu"
+version = "0.1.0"
+authors = ["Daniel Busaba <DanielBusaba99@hotmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wgpu = "*"
+zerocopy = "*"
+env_logger = "*"
+futures = "*"
+image = "*"
+
+[build-dependencies]
+glsl-to-spirv = "*"

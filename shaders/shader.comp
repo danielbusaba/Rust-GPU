@@ -1,0 +1,18 @@
+#version 450
+
+layout(local_size_x = 1) in;
+
+// layout(set = 0, binding = 0, rgba8) restrict uniform readonly image2D original;
+// layout(set = 0, binding = 1, rgba8) restrict uniform writeonly image2D modified;
+
+layout(set = 0, binding = 0) restrict buffer orgbuf { uint original []; };
+layout(set = 0, binding = 1) restrict buffer modbuf { uint modified []; };
+
+void main() {
+    // ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    // vec4 write = vec4(imageLoad(original, index).rgb / vec3(16.0), 1.0);
+    // imageStore(modified, index, write);
+
+    uint index = gl_GlobalInvocationID.x;
+    modified [index] = ((original [index] & 255) / 16) + (((original [index] & (255 << 8)) / 16) & (255 << 8)) + (((original [index] & (255 << 16)) / 16) & (255 << 16)) + (((original [index] & (255 << 24)) / 16) & (255 << 24));
+}
