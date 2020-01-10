@@ -8,8 +8,6 @@ edition = "2018"
 
 [dependencies]
 wgpu = "*"
-zerocopy = "*"
-env_logger = "*"
 futures = "*"
 image = "*"
 
