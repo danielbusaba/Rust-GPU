@@ -1,8 +1,8 @@
 async fn run()
 {
-    let image_file = image::open(std::path::Path::new("images/mdb001.pgm")).unwrap().to_rgb();    //DSC_0716.JPG mdb001.pgm
+    let image_file = image::open(std::path::Path::new("images/mdb001.pgm")).unwrap().to_rgba();    //DSC_0716.JPG mdb001.pgm
     let (width, height) = image_file.dimensions();
-    let len = (width * height * 3) as u64;
+    let len = (width * height * 4) as u64;
     let buf = image_file.into_raw();
 
     let adapter = wgpu::Adapter::request(
@@ -13,53 +13,89 @@ async fn run()
         }
     ).unwrap();
 
-    let (device, mut queue) = adapter.request_device(&wgpu::DeviceDescriptor {
-        extensions: wgpu::Extensions {
-            anisotropic_filtering: false,
+    let (device, mut queue) = adapter.request_device(&wgpu::DeviceDescriptor
+    {
+        extensions: wgpu::Extensions
+        {
+            anisotropic_filtering: false
         },
-        limits: wgpu::Limits::default(),
+        limits: wgpu::Limits::default()
     });
 
     let cs = include_bytes!("../spv/shader.comp.spv");
-    let cs_module =
-        device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&cs[..])).unwrap());
+    let cs_module = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&cs[..])).unwrap());
 
     // The output buffer lets us retrieve the data as an array
     let input_buffer = device.create_buffer_mapped(
             len as usize,
             wgpu::BufferUsage::MAP_WRITE
-            | wgpu::BufferUsage::MAP_READ
-            | wgpu::BufferUsage::COPY_DST
-            | wgpu::BufferUsage::COPY_SRC
-            | wgpu::BufferUsage::UNIFORM
+          | wgpu::BufferUsage::MAP_READ
+          | wgpu::BufferUsage::COPY_DST
+          | wgpu::BufferUsage::COPY_SRC
     ).fill_from_slice(&buf);
 
-    // The output buffer lets us retrieve the data as an array
     let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         size: len,
         usage: wgpu::BufferUsage::MAP_READ
              | wgpu::BufferUsage::COPY_DST
              | wgpu::BufferUsage::COPY_SRC
-             | wgpu::BufferUsage::UNIFORM
     });
+
+    let texture_extent = wgpu::Extent3d
+    {
+        width: width,
+        height: height,
+        depth: 1
+    };
+
+    let input_texture = device.create_texture(&wgpu::TextureDescriptor
+    {
+        size: texture_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Uint,
+        usage: wgpu::TextureUsage::SAMPLED
+             | wgpu::TextureUsage::COPY_DST
+    });
+
+    let input_texture_view = input_texture.create_default_view();
+
+    // The output buffer lets us retrieve the data as an array
+    let output_texture = device.create_texture(&wgpu::TextureDescriptor
+    {
+        size: texture_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Uint,
+        usage: wgpu::TextureUsage::SAMPLED
+             | wgpu::TextureUsage::COPY_SRC
+    });
+
+    let output_texture_view = output_texture.create_default_view();
 
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         bindings: &[wgpu::BindGroupLayoutBinding
                     {
                         binding: 0,
                         visibility: wgpu::ShaderStage::COMPUTE,
-                        ty: wgpu::BindingType::UniformBuffer
+                        ty: wgpu::BindingType::SampledTexture
                         {
-                            dynamic: false
+                            multisampled: false,
+                            dimension: wgpu::TextureViewDimension::D2
                         }
                     },
                     wgpu::BindGroupLayoutBinding
                     {
                         binding: 1,
                         visibility: wgpu::ShaderStage::COMPUTE,
-                        ty: wgpu::BindingType::UniformBuffer
+                        ty: wgpu::BindingType::SampledTexture
                         {
-                            dynamic: false
+                            multisampled: false,
+                            dimension: wgpu::TextureViewDimension::D2
                         }
                     }]
     });
@@ -70,18 +106,12 @@ async fn run()
         bindings: &[wgpu::Binding
                     {
                         binding: 0,
-                        resource: wgpu::BindingResource::Buffer {
-                            buffer: &input_buffer,
-                            range: 0 .. len,
-                        },
+                        resource: wgpu::BindingResource::TextureView(&input_texture_view)
                     },
                     wgpu::Binding
                     {
                         binding: 1,
-                        resource: wgpu::BindingResource::Buffer {
-                            buffer: &output_buffer,
-                            range: 0 .. len,
-                        },
+                        resource: wgpu::BindingResource::TextureView(&output_texture_view)
                     }]
     });
 
@@ -101,14 +131,52 @@ async fn run()
     });
 
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &output_buffer, 0, len);
+
+    encoder.copy_buffer_to_texture(
+        wgpu::BufferCopyView
+        {
+            buffer: &input_buffer,
+            offset: 0,
+            row_pitch: width * std::mem::size_of::<u32>() as u32,
+            image_height: height
+        },
+        wgpu::TextureCopyView
+        {
+            texture: &input_texture,
+            mip_level: 0,
+            array_layer: 0,
+            origin: wgpu::Origin3d
+            {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0
+            }
+        },
+        texture_extent
+    );
+
     {
         let mut cpass = encoder.begin_compute_pass();
         cpass.set_pipeline(&compute_pipeline);
         cpass.set_bind_group(0, &bind_group, &[]);
-        cpass.dispatch(len as u32, 1, 1);
+        cpass.dispatch(width, height, 1);
     }
-    encoder.copy_buffer_to_buffer(&output_buffer, 0, &output_buffer, 0, len);
+
+    encoder.copy_texture_to_buffer(
+        wgpu::TextureCopyView {
+            texture: &output_texture,
+            mip_level: 0,
+            array_layer: 0,
+            origin: wgpu::Origin3d::ZERO,
+        },
+        wgpu::BufferCopyView {
+            buffer: &output_buffer,
+            offset: 0,
+            row_pitch: width * std::mem::size_of::<u32>() as u32,
+            image_height: height,
+        },
+        texture_extent,
+    );
 
     queue.submit(&[encoder.finish()]);
 
@@ -117,7 +185,7 @@ async fn run()
         if let Ok(mapping) = result
         {
             let buffer: Vec<u8> = mapping.data.chunks_exact(1).map(|c| u8::from_ne_bytes([c [0]])).collect();
-            let out = image::RgbImage::from_raw(1024, 1024, buffer).unwrap(); //6000 4000 1024 1024
+            let out = image::RgbaImage::from_raw(1024, 1024, buffer).unwrap(); //6000 4000 1024 1024
             out.save(std::path::Path::new("images/mdb001_out.bmp")).unwrap();
         }
     });
@@ -127,12 +195,13 @@ async fn run()
         if let Ok(mapping) = result
         {
             let buffer: Vec<u8> = mapping.data.chunks_exact(1).map(|c| u8::from_ne_bytes([c [0]])).collect();
-            let out = image::RgbImage::from_raw(1024, 1024, buffer).unwrap();
+            let out = image::RgbaImage::from_raw(1024, 1024, buffer).unwrap();
             out.save(std::path::Path::new("images/mdb001_in.bmp")).unwrap();
         }
     });
 }
 
-fn main() {
+fn main()
+{
     futures::executor::block_on(run());
 }
