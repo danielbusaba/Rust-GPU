@@ -1,6 +1,9 @@
 async fn run()
 {
-    let image_file = image::open(std::path::Path::new("images/mdb001.pgm")).unwrap().to_rgba();    //DSC_0716.JPG mdb001.pgm
+    let args: Vec<String> = std::env::args().collect();
+    let file: &str = &args[1];
+
+    let image_file = image::open(std::path::Path::new(file)).unwrap().to_rgba();
     let (width, height) = image_file.dimensions();
     let len = (width * height * 4) as u64;
     let buf = image_file.into_raw();
@@ -25,7 +28,6 @@ async fn run()
     let cs = include_bytes!("../spv/shader.comp.spv");
     let cs_module = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&cs[..])).unwrap());
 
-    // The output buffer lets us retrieve the data as an array
     let input_buffer = device.create_buffer_mapped(
             len as usize,
             wgpu::BufferUsage::MAP_WRITE
@@ -180,23 +182,23 @@ async fn run()
 
     queue.submit(&[encoder.finish()]);
 
-    output_buffer.map_read_async(0, len, | result: wgpu::BufferMapAsyncResult<&[u8]> |
+    output_buffer.map_read_async(0, len, move | result: wgpu::BufferMapAsyncResult<&[u8]> |
     {
         if let Ok(mapping) = result
         {
             let buffer: Vec<u8> = mapping.data.chunks_exact(1).map(|c| u8::from_ne_bytes([c [0]])).collect();
-            let out = image::RgbaImage::from_raw(1024, 1024, buffer).unwrap(); //6000 4000 1024 1024
-            out.save(std::path::Path::new("images/mdb001_out.bmp")).unwrap();
+            let out = image::RgbaImage::from_raw(width, height, buffer).unwrap();
+            out.save(std::path::Path::new("output.bmp")).unwrap();
         }
     });
 
-    input_buffer.map_read_async(0, len, | result: wgpu::BufferMapAsyncResult<&[u8]> |
+    input_buffer.map_read_async(0, len, move | result: wgpu::BufferMapAsyncResult<&[u8]> |
     {
         if let Ok(mapping) = result
         {
             let buffer: Vec<u8> = mapping.data.chunks_exact(1).map(|c| u8::from_ne_bytes([c [0]])).collect();
-            let out = image::RgbaImage::from_raw(1024, 1024, buffer).unwrap();
-            out.save(std::path::Path::new("images/mdb001_in.bmp")).unwrap();
+            let out = image::RgbaImage::from_raw(width, height, buffer).unwrap();
+            out.save(std::path::Path::new("input.bmp")).unwrap();
         }
     });
 }
