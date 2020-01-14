@@ -1,4 +1,4 @@
-#version 450
+#version 430
 
 layout(local_size_x = 8, local_size_y = 8) in;
 
@@ -8,6 +8,6 @@ void main()
 {
     ivec2 index = ivec2(gl_GlobalInvocationID.xy);
     uvec4 pixel = imageLoad(image, index);
-    uvec4 write = uvec4(pixel.rgb / uvec3(16), pixel.a);
+    uvec4 write = uvec4(pixel.rgb >> uvec3(4), pixel.a);
     imageStore(image, index, write);
 }
