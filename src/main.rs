@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 async fn run()
 {
     // Get file name from input args
@@ -110,6 +112,9 @@ async fn run()
         }
     });
 
+    // Start recording time after fixed time costs above
+    let now = Instant::now();
+
     // Create a command encoder for the GPU
     let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
 
@@ -175,6 +180,11 @@ async fn run()
             out.save(std::path::Path::new("output.bmp")).unwrap();
         }
     });
+
+    // Record time after image copied back to CPU
+    let elapsed = now.elapsed();
+    let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
+    println!("Image processed in {} seconds", sec);
 }
 
 fn main()
