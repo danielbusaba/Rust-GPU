@@ -3,7 +3,7 @@
 layout(local_size_x = 8, local_size_y = 8) in;
 
 layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
-layout(binding = 0, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
+layout(binding = 1, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
 
 void main()
 {

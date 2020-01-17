@@ -53,8 +53,8 @@ async fn run()
         depth: 1
     };
 
-    // Create texture on GPU
-    let texture = device.create_texture(&wgpu::TextureDescriptor
+    // Create original texture on GPU
+    let input_texture = device.create_texture(&wgpu::TextureDescriptor
     {
         size: texture_extent,
         array_layer_count: 1,
@@ -62,13 +62,29 @@ async fn run()
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Uint,
-        usage: wgpu::TextureUsage::SAMPLED
+        usage: wgpu::TextureUsage::STORAGE
              | wgpu::TextureUsage::COPY_SRC
              | wgpu::TextureUsage::COPY_DST
     });
 
     // Generate default view for the texture
-    let texture_view = texture.create_default_view();
+    let input_texture_view = input_texture.create_default_view();
+
+    // Create texture for writing changes on GPU
+    let output_texture = device.create_texture(&wgpu::TextureDescriptor
+    {
+        size: texture_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Uint,
+        usage: wgpu::TextureUsage::STORAGE
+             | wgpu::TextureUsage::COPY_SRC
+    });
+
+    // Generate default view for the texture
+    let output_texture_view = output_texture.create_default_view();
 
     // Bind input texture to the shader
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -76,9 +92,17 @@ async fn run()
                     {
                         binding: 0,
                         visibility: wgpu::ShaderStage::COMPUTE,
-                        ty: wgpu::BindingType::SampledTexture
+                        ty: wgpu::BindingType::StorageTexture
                         {
-                            multisampled: false,
+                            dimension: wgpu::TextureViewDimension::D2
+                        }
+                    },
+                    wgpu::BindGroupLayoutBinding
+                    {
+                        binding: 1,
+                        visibility: wgpu::ShaderStage::COMPUTE,
+                        ty: wgpu::BindingType::StorageTexture
+                        {
                             dimension: wgpu::TextureViewDimension::D2
                         }
                     }]
@@ -91,7 +115,12 @@ async fn run()
         bindings: &[wgpu::Binding
                     {
                         binding: 0,
-                        resource: wgpu::BindingResource::TextureView(&texture_view)
+                        resource: wgpu::BindingResource::TextureView(&input_texture_view)
+                    },
+                    wgpu::Binding
+                    {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(&output_texture_view)
                     }]
     });
 
@@ -129,7 +158,7 @@ async fn run()
         },
         wgpu::TextureCopyView
         {
-            texture: &texture,
+            texture: &input_texture,
             mip_level: 0,
             array_layer: 0,
             origin: wgpu::Origin3d
@@ -153,7 +182,7 @@ async fn run()
     // Copy the output texture back to the buffer
     encoder.copy_texture_to_buffer(
         wgpu::TextureCopyView {
-            texture: &texture,
+            texture: &output_texture,
             mip_level: 0,
             array_layer: 0,
             origin: wgpu::Origin3d::ZERO,
