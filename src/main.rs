@@ -17,7 +17,7 @@ async fn run()
         &wgpu::RequestAdapterOptions
         {
             power_preference: wgpu::PowerPreference::HighPerformance,
-            backends: wgpu::BackendBit::PRIMARY
+            backends: wgpu::BackendBit::all()
         }
     ).unwrap();
     println!("{:?}", adapter.get_info());
@@ -33,7 +33,7 @@ async fn run()
     });
 
     // Retrieve shader module
-    let cs = include_bytes!("../spv/shader.comp.spv");
+    let cs = include_bytes!("../spv/div16.comp.spv");
     let cs_module = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&cs[..])).unwrap());
 
     // Copy image buffer to device

@@ -1,0 +1,14 @@
+#version 310 es
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
+layout(binding = 0, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
+
+void main()
+{
+    ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    uvec4 pixel = imageLoad(original, index);
+    uvec4 write = uvec4(pixel.rgb >> uvec3(4), pixel.a);
+    imageStore(modified, index, write);
+}

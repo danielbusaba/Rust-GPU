@@ -5,7 +5,8 @@ use glsl_to_spirv::ShaderType;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Tell the build script to only run again if we change our source shaders
-    println!("cargo:rerun-if-changed=shaders/shader.comp");
+    println!("cargo:rerun-if-changed=shaders/div16.comp");
+    println!("cargo:rerun-if-changed=shaders/max_diff.comp");
 
     for entry in std::fs::read_dir("shaders")? {
         let entry = entry?;
@@ -14,16 +15,19 @@ fn main() -> Result<(), Box<dyn Error>> {
             let in_path = entry.path();
 
             // Support only vertex and fragment shaders currently
-            let shader_type = in_path.extension().and_then(|ext| {
-                match ext.to_string_lossy().as_ref() {
-                    "vert" => Some(ShaderType::Vertex),
-                    "frag" => Some(ShaderType::Fragment),
-                    "comp" => Some(ShaderType::Compute),
-                    _ => None,
-                }
+            let shader_type = in_path.extension().and_then(|ext|
+                {
+                    match ext.to_string_lossy().as_ref()
+                    {
+                        "vert" => Some(ShaderType::Vertex),
+                        "frag" => Some(ShaderType::Fragment),
+                        "comp" => Some(ShaderType::Compute),
+                        _ => None,
+                    }
             });
 
-            if let Some(shader_type) = shader_type {
+            if let Some(shader_type) = shader_type
+            {
                 use std::io::Read;
 
                 let source = std::fs::read_to_string(&in_path)?;

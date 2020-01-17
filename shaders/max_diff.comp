@@ -1,0 +1,28 @@
+#version 310 es
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
+layout(binding = 0, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
+
+void main()
+{
+    ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    uvec3 max = uvec3(0);
+    uvec3 min = uvec3(255);
+    for (int i = index.x - 1; i <= index.x + 1; i++)
+    {
+        for (int j = index.y - 1; j <= index.y + 1; j++)
+        {
+            uvec4 pixel = imageLoad(original, ivec2(i, j));
+            if (pixel.r > max.r) { max.r = pixel.r; }
+            if (pixel.g > max.g) { max.g = pixel.g; }
+            if (pixel.b > max.b) { max.r = pixel.b; }
+            if (pixel.r < min.r) { min.r = pixel.r; }
+            if (pixel.g < min.g) { min.g = pixel.g; }
+            if (pixel.b < min.b) { min.b = pixel.b; }
+        }
+    }
+    uvec4 write = uvec4(max - min, imageLoad(original, index).a);
+    imageStore(modified, index, write);
+}
