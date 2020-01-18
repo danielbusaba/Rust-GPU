@@ -8,16 +8,27 @@ layout(binding = 1, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
 void main()
 {
     ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(original);
+
+    int rl = index.x;
+    if (index.x > 0) { rl = index.x - 1; }
+    int rr = index.x;
+    if (index.x < size.x - 1) { rr = index.x + 1; }
+    int cl = index.y;
+    if (index.y > 0) { cl = index.y - 1; }
+    int cr = index.y;
+    if (index.y < size.y - 1) { cr = index.y + 1; }
+
     uvec3 max = uvec3(0);
     uvec3 min = uvec3(255);
-    for (int i = index.x - 1; i <= index.x + 1; i++)
+    for (int i = rl; i < rr; i++)
     {
-        for (int j = index.y - 1; j <= index.y + 1; j++)
+        for (int j = cl; j < cr; j++)
         {
             uvec4 pixel = imageLoad(original, ivec2(i, j));
             if (pixel.r > max.r) { max.r = pixel.r; }
             if (pixel.g > max.g) { max.g = pixel.g; }
-            if (pixel.b > max.b) { max.r = pixel.b; }
+            if (pixel.b > max.b) { max.b = pixel.b; }
             if (pixel.r < min.r) { min.r = pixel.r; }
             if (pixel.g < min.g) { min.g = pixel.g; }
             if (pixel.b < min.b) { min.b = pixel.b; }

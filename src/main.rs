@@ -33,7 +33,7 @@ async fn run()
     });
 
     // Retrieve shader module
-    let cs = include_bytes!("../spv/div16.comp.spv");
+    let cs = include_bytes!("../spv/max_diff.comp.spv");
     let cs_module = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&cs[..])).unwrap());
 
     // Copy image buffer to device
