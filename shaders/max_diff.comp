@@ -25,7 +25,7 @@ void main()
     {
         for (int j = cl; j < cr; j++)
         {
-            uvec4 pixel = imageLoad(original, ivec2(i, j));
+            uvec3 pixel = imageLoad(original, ivec2(i, j)).rgb;
             if (pixel.r > max.r) { max.r = pixel.r; }
             if (pixel.g > max.g) { max.g = pixel.g; }
             if (pixel.b > max.b) { max.b = pixel.b; }

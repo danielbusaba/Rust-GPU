@@ -1,0 +1,39 @@
+#version 310 es
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
+layout(binding = 1, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
+
+void main()
+{
+    ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(original);
+
+    int rl = index.x;
+    if (index.x > 0) { rl = index.x - 1; }
+    int rr = index.x;
+    if (index.x < size.x - 1) { rr = index.x + 1; }
+    int cl = index.y;
+    if (index.y > 0) { cl = index.y - 1; }
+    int cr = index.y;
+    if (index.y < size.y - 1) { cr = index.y + 1; }
+
+    uvec3 max = uvec3(0);
+    uvec3 pixel = imageLoad(original, index).rgb;
+    for (int i = rl; i < rr; i++)
+    {
+        for (int j = cl; j < cr; j++)
+        {
+            uvec3 subpixel = imageLoad(original, ivec2(i, j)).rgb;
+            uint temp = uint(abs(int(pixel.r) - int(subpixel.r)));
+            if (temp > max.r) { max.r = temp; }
+            temp = uint(abs(int(pixel.g) - int(subpixel.g)));
+            if (temp > max.g) { max.g = temp; }
+            temp = uint(abs(int(pixel.b) - int(subpixel.b)));
+            if (temp > max.b) { max.b = temp; }
+        }
+    }
+    uvec4 write = uvec4(max, imageLoad(original, index).a);
+    imageStore(modified, index, write);
+}

@@ -7,6 +7,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Tell the build script to only run again if we change our source shaders
     println!("cargo:rerun-if-changed=shaders/div16.comp");
     println!("cargo:rerun-if-changed=shaders/max_diff.comp");
+    println!("cargo:rerun-if-changed=shaders/center_diff.comp");
 
     for entry in std::fs::read_dir("shaders")? {
         let entry = entry?;
