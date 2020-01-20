@@ -33,8 +33,10 @@ async fn run()
     });
 
     // Retrieve shader module
-    let cs = include_bytes!("../spv/center_diff.comp.spv");
-    let cs_module = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&cs[..])).unwrap());
+    let minmax = include_bytes!("../spv/minmax.comp.spv");
+    let minmax = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&minmax[..])).unwrap());
+    let saturate = include_bytes!("../spv/saturate.comp.spv");
+    let saturate = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&saturate[..])).unwrap());
 
     // Copy image buffer to device
     let buffer = device.create_buffer_mapped(
@@ -86,6 +88,27 @@ async fn run()
     // Generate default view for the texture
     let output_texture_view = output_texture.create_default_view();
 
+    // *********** Manual memory management seems useless, need buffer allocated though
+
+    let numbers = [0u8, 0u8, 0u8, 255u8,
+                   0u8, 0u8, 0u8, 255u8,
+                   0u8, 0u8, 0u8, 255u8,
+                   0u8, 0u8, 0u8, 255u8,
+                   0u8, 0u8, 0u8, 0u8,
+                   0u8, 0u8, 0u8, 0u8,
+                   0u8, 0u8, 0u8, 0u8,
+                   0u8, 0u8, 0u8, 0u8];
+    let slice_size = numbers.len() * std::mem::size_of::<u8>();
+    let size = slice_size as wgpu::BufferAddress;
+
+    let storage_buffer = device.create_buffer_mapped(
+        size as usize,
+        wgpu::BufferUsage::STORAGE,
+    );
+    let storage_buffer = storage_buffer.fill_from_slice(&numbers);
+
+    // ***********
+
     // Bind input texture to the shader
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
         bindings: &[wgpu::BindGroupLayoutBinding
@@ -105,6 +128,16 @@ async fn run()
                         {
                             dimension: wgpu::TextureViewDimension::D2
                         }
+                    },
+                    wgpu::BindGroupLayoutBinding
+                    {
+                        binding: 2,
+                        visibility: wgpu::ShaderStage::COMPUTE,
+                        ty: wgpu::BindingType::StorageBuffer
+                        {
+                            dynamic: false,
+                            readonly: false,
+                        }
                     }]
     });
 
@@ -121,6 +154,15 @@ async fn run()
                     {
                         binding: 1,
                         resource: wgpu::BindingResource::TextureView(&output_texture_view)
+                    },
+                    wgpu::Binding
+                    {
+                        binding: 2,
+                        resource: wgpu::BindingResource::Buffer
+                        {
+                            buffer: &storage_buffer,
+                            range: 0 .. size
+                        }
                     }]
     });
 
@@ -131,12 +173,22 @@ async fn run()
     });
 
     // Setup pipeline based on created layout
-    let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor
+    let minmax_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor
     {
         layout: &pipeline_layout,
         compute_stage: wgpu::ProgrammableStageDescriptor
         {
-            module: &cs_module,
+            module: &minmax,
+            entry_point: "main",
+        }
+    });
+
+    let saturate_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor
+    {
+        layout: &pipeline_layout,
+        compute_stage: wgpu::ProgrammableStageDescriptor
+        {
+            module: &saturate,
             entry_point: "main",
         }
     });
@@ -174,7 +226,10 @@ async fn run()
     // Run the computations on the image
     {
         let mut cpass = encoder.begin_compute_pass();
-        cpass.set_pipeline(&compute_pipeline);
+        cpass.set_pipeline(&minmax_pipeline);
+        cpass.set_bind_group(0, &bind_group, &[]);
+        cpass.dispatch(width, height, 1);
+        cpass.set_pipeline(&saturate_pipeline);
         cpass.set_bind_group(0, &bind_group, &[]);
         cpass.dispatch(width, height, 1);
     }

@@ -19,21 +19,21 @@ void main()
     int cr = index.y;
     if (index.y < size.y - 1) { cr = index.y + 1; }
 
-    uvec3 max = uvec3(0);
-    uvec3 min = uvec3(255);
+    uvec3 maximum = uvec3(0);
+    uvec3 minimum = uvec3(255);
     for (int i = rl; i < rr; i++)
     {
         for (int j = cl; j < cr; j++)
         {
             uvec3 pixel = imageLoad(original, ivec2(i, j)).rgb;
-            if (pixel.r > max.r) { max.r = pixel.r; }
-            if (pixel.g > max.g) { max.g = pixel.g; }
-            if (pixel.b > max.b) { max.b = pixel.b; }
-            if (pixel.r < min.r) { min.r = pixel.r; }
-            if (pixel.g < min.g) { min.g = pixel.g; }
-            if (pixel.b < min.b) { min.b = pixel.b; }
+            if (pixel.r > maximum.r) { maximum.r = pixel.r; }
+            if (pixel.g > maximum.g) { maximum.g = pixel.g; }
+            if (pixel.b > maximum.b) { maximum.b = pixel.b; }
+            if (pixel.r < minimum.r) { minimum.r = pixel.r; }
+            if (pixel.g < minimum.g) { minimum.g = pixel.g; }
+            if (pixel.b < minimum.b) { minimum.b = pixel.b; }
         }
     }
-    uvec4 write = uvec4(max - min, imageLoad(original, index).a);
+    uvec4 write = uvec4(maximum - minimum, imageLoad(original, index).a);
     imageStore(modified, index, write);
 }

@@ -3,11 +3,14 @@ extern crate glsl_to_spirv;
 use std::error::Error;
 use glsl_to_spirv::ShaderType;
 
-fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>>
+{
     // Tell the build script to only run again if we change our source shaders
     println!("cargo:rerun-if-changed=shaders/div16.comp");
     println!("cargo:rerun-if-changed=shaders/max_diff.comp");
     println!("cargo:rerun-if-changed=shaders/center_diff.comp");
+    println!("cargo:rerun-if-changed=shaders/saturate.comp");
+    println!("cargo:rerun-if-changed=shaders/minmax.comp");
 
     for entry in std::fs::read_dir("shaders")? {
         let entry = entry?;
@@ -15,7 +18,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         if entry.file_type()?.is_file() {
             let in_path = entry.path();
 
-            // Support only vertex and fragment shaders currently
+            // Support only vertex, fragment, and compute shaders currently
             let shader_type = in_path.extension().and_then(|ext|
                 {
                     match ext.to_string_lossy().as_ref()

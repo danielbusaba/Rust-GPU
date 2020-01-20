@@ -1,0 +1,22 @@
+#version 310 es
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
+layout(binding = 2, std140) buffer MinMax
+{
+    uvec4 minimum;
+    uvec4 maximum;
+} minmax;
+
+void main()
+{
+    ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    uvec4 pixel = imageLoad(original, index);
+    atomicMax(minmax.maximum.r, pixel.r);
+    atomicMax(minmax.maximum.g, pixel.g);
+    atomicMax(minmax.maximum.b, pixel.b);
+    atomicMin(minmax.minimum.r, pixel.r);
+    atomicMin(minmax.minimum.g, pixel.g);
+    atomicMin(minmax.minimum.b, pixel.b);
+}
