@@ -15,8 +15,8 @@ void main()
     uvec4 pixel = imageLoad(original, index);
     if (pixel.r < minmax.minimum.r) { atomicMin(minmax.minimum.r, pixel.r); }
     if (pixel.g < minmax.minimum.g) { atomicMin(minmax.minimum.g, pixel.g); }
-    if (pixel.r < minmax.minimum.b) { atomicMin(minmax.minimum.b, pixel.b); }
+    if (pixel.b < minmax.minimum.b) { atomicMin(minmax.minimum.b, pixel.b); }
     if (pixel.r > minmax.maximum.r) { atomicMax(minmax.maximum.r, pixel.r); }
     if (pixel.g > minmax.maximum.g) { atomicMax(minmax.maximum.g, pixel.g); }
-    if (pixel.r > minmax.maximum.b) { atomicMax(minmax.maximum.b, pixel.b); }
+    if (pixel.b > minmax.maximum.b) { atomicMax(minmax.maximum.b, pixel.b); }
 }
