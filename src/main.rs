@@ -265,6 +265,9 @@ async fn run()
         }
     });
 
+    // Wait for copy to finish and clean up memory
+    device.poll(true);
+
     // Record time after image copied back to CPU
     let elapsed = now.elapsed();
     let sec = (elapsed.as_secs() as f64) + (elapsed.subsec_nanos() as f64 / 1000_000_000.0);
