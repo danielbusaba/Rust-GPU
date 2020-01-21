@@ -20,7 +20,7 @@ async fn run()
             backends: wgpu::BackendBit::all()
         }
     ).unwrap();
-    println!("{:?}", adapter.get_info());
+    println!("Device: {}", adapter.get_info().name);
 
     // Get device and queue pointers
     let (device, mut queue) = adapter.request_device(&wgpu::DeviceDescriptor
