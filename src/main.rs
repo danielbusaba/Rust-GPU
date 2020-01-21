@@ -7,7 +7,7 @@ async fn run()
     let file: &str = &args[1];
 
     // Convert image into a vector of bytes and get its dimensions
-    let image_file = image::open(std::path::Path::new(file)).unwrap().to_rgba();
+    let image_file = image::open(std::path::Path::new(file)).expect(&format!("Image file {} not found", file)).to_rgba();
     let (width, height) = image_file.dimensions();
     let len = (width * height * 4) as u64;
     let in_buf = image_file.into_raw();
@@ -19,7 +19,7 @@ async fn run()
             power_preference: wgpu::PowerPreference::HighPerformance,
             backends: wgpu::BackendBit::all()
         }
-    ).unwrap();
+    ).expect("Failed to query graphics device");
     println!("Device: {}", adapter.get_info().name);
 
     // Get device and queue pointers
@@ -88,26 +88,24 @@ async fn run()
     // Generate default view for the texture
     let output_texture_view = output_texture.create_default_view();
 
-    // *********** Manual memory management seems useless, need buffer allocated though
-
-    let numbers = [0u8, 0u8, 0u8, 255u8,
-                   0u8, 0u8, 0u8, 255u8,
-                   0u8, 0u8, 0u8, 255u8,
-                   0u8, 0u8, 0u8, 255u8,
-                   0u8, 0u8, 0u8, 0u8,
-                   0u8, 0u8, 0u8, 0u8,
-                   0u8, 0u8, 0u8, 0u8,
-                   0u8, 0u8, 0u8, 0u8];
-    let slice_size = numbers.len() * std::mem::size_of::<u8>();
+    // Store initial minimum and maximum values for minmax shader
+    let initial_minmax = [0u8, 0u8, 0u8, 255u8,
+                          0u8, 0u8, 0u8, 255u8,
+                          0u8, 0u8, 0u8, 255u8,
+                          0u8, 0u8, 0u8, 255u8,
+                          0u8, 0u8, 0u8, 0u8,
+                          0u8, 0u8, 0u8, 0u8,
+                          0u8, 0u8, 0u8, 0u8,
+                          0u8, 0u8, 0u8, 0u8];
+    let slice_size = initial_minmax.len() * std::mem::size_of::<u8>();
     let size = slice_size as wgpu::BufferAddress;
 
+    // Copy initial values to a storage buffer
     let storage_buffer = device.create_buffer_mapped(
         size as usize,
         wgpu::BufferUsage::STORAGE,
     );
-    let storage_buffer = storage_buffer.fill_from_slice(&numbers);
-
-    // ***********
+    let storage_buffer = storage_buffer.fill_from_slice(&initial_minmax);
 
     // Bind input texture to the shader
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
