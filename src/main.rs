@@ -39,6 +39,8 @@ async fn run()
     let max_diff = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&max_diff[..])).expect("Failed to load max_diff shader"));
     let center_diff = include_bytes!("../spv/center_diff.comp.spv");
     let center_diff = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&center_diff[..])).expect("Failed to load center_diff shader"));
+    let affinity = include_bytes!("../spv/affinity.comp.spv");
+    let affinity = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&affinity[..])).expect("Failed to load affinity shader"));
     let minmax = include_bytes!("../spv/minmax.comp.spv");
     let minmax = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&minmax[..])).expect("Failed to load minmax shader"));
     let saturate = include_bytes!("../spv/saturate.comp.spv");
@@ -46,11 +48,11 @@ async fn run()
 
     // Copy image buffer to device
     let buffer = device.create_buffer_mapped(
-            len as usize,
-            wgpu::BufferUsage::MAP_WRITE
-          | wgpu::BufferUsage::MAP_READ
-          | wgpu::BufferUsage::COPY_SRC
-          | wgpu::BufferUsage::COPY_DST
+        len as usize,
+        wgpu::BufferUsage::MAP_WRITE
+        | wgpu::BufferUsage::MAP_READ
+        | wgpu::BufferUsage::COPY_SRC
+        | wgpu::BufferUsage::COPY_DST
     ).fill_from_slice(&in_buf);
 
     // Setup texture dimensions
@@ -71,8 +73,8 @@ async fn run()
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Uint,
         usage: wgpu::TextureUsage::STORAGE
-             | wgpu::TextureUsage::COPY_SRC
-             | wgpu::TextureUsage::COPY_DST
+            | wgpu::TextureUsage::COPY_SRC
+            | wgpu::TextureUsage::COPY_DST
     });
 
     // Generate default view for the texture
@@ -88,30 +90,11 @@ async fn run()
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Rgba8Uint,
         usage: wgpu::TextureUsage::STORAGE
-             | wgpu::TextureUsage::COPY_SRC
+            | wgpu::TextureUsage::COPY_SRC
     });
 
     // Generate default view for the texture
     let output_texture_view = output_texture.create_default_view();
-
-    // Store initial minimum and maximum values for minmax shader
-    let initial_minmax = [0u8, 0u8, 0u8, 255u8,
-                          0u8, 0u8, 0u8, 255u8,
-                          0u8, 0u8, 0u8, 255u8,
-                          0u8, 0u8, 0u8, 255u8,
-                          0u8, 0u8, 0u8, 0u8,
-                          0u8, 0u8, 0u8, 0u8,
-                          0u8, 0u8, 0u8, 0u8,
-                          0u8, 0u8, 0u8, 0u8];
-    let slice_size = initial_minmax.len() * std::mem::size_of::<u8>();
-    let size = slice_size as wgpu::BufferAddress;
-
-    // Copy initial values to a storage buffer
-    let storage_buffer = device.create_buffer_mapped(
-        size as usize,
-        wgpu::BufferUsage::STORAGE,
-    );
-    let storage_buffer = storage_buffer.fill_from_slice(&initial_minmax);
 
     // Bind input texture to the shader
     let bind_group_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
@@ -132,16 +115,6 @@ async fn run()
                         {
                             dimension: wgpu::TextureViewDimension::D2
                         }
-                    },
-                    wgpu::BindGroupLayoutBinding
-                    {
-                        binding: 2,
-                        visibility: wgpu::ShaderStage::COMPUTE,
-                        ty: wgpu::BindingType::StorageBuffer
-                        {
-                            dynamic: false,
-                            readonly: false,
-                        }
                     }]
     });
 
@@ -158,15 +131,6 @@ async fn run()
                     {
                         binding: 1,
                         resource: wgpu::BindingResource::TextureView(&output_texture_view)
-                    },
-                    wgpu::Binding
-                    {
-                        binding: 2,
-                        resource: wgpu::BindingResource::Buffer
-                        {
-                            buffer: &storage_buffer,
-                            range: 0 .. size
-                        }
                     }]
     });
 
@@ -177,22 +141,12 @@ async fn run()
     });
 
     // Setup pipeline based on created layout
-    let minmax_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor
+    let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor
     {
         layout: &pipeline_layout,
         compute_stage: wgpu::ProgrammableStageDescriptor
         {
-            module: &minmax,
-            entry_point: "main",
-        }
-    });
-
-    let saturate_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor
-    {
-        layout: &pipeline_layout,
-        compute_stage: wgpu::ProgrammableStageDescriptor
-        {
-            module: &saturate,
+            module: &affinity,
             entry_point: "main",
         }
     });
@@ -230,10 +184,7 @@ async fn run()
     // Run the computations on the image
     {
         let mut cpass = encoder.begin_compute_pass();
-        cpass.set_pipeline(&minmax_pipeline);
-        cpass.set_bind_group(0, &bind_group, &[]);
-        cpass.dispatch(width, height, 1);
-        cpass.set_pipeline(&saturate_pipeline);
+        cpass.set_pipeline(&compute_pipeline);
         cpass.set_bind_group(0, &bind_group, &[]);
         cpass.dispatch(width, height, 1);
     }
@@ -268,9 +219,6 @@ async fn run()
             out.save(std::path::Path::new("output.bmp")).unwrap();
         }
     });
-
-    // Wait for copy to finish and clean up memory
-    device.poll(true);
 
     // Record time after image copied back to CPU
     let elapsed = now.elapsed();

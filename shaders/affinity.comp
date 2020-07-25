@@ -35,89 +35,113 @@ void main()
     int cr = index.y;
     if (index.y < size.y - 1) { cr = index.y + 1; }
 
-    if (rr - rl == 2)
+    // Loop over sub-image
+    for (int i = rl; i < rr; i++)
     {
-        // Handle 2x2 corners
-        if (cr - cl == 2)
+        for (int j = cl; j < cr; j++)
         {
-            uvec4 one = imageLoad(original, ivec2(rr, cr));
-            uvec4 two = imageLoad(original, ivec2(rr + 1, cr));
-            uvec4 three = imageLoad(original, ivec2(rr, cr + 1));
-            uvec4 four = imageLoad(original, ivec2(rr + 1, cr + 1));
-            
-            single_frequencies [one.r].r++;
-            single_frequencies [one.g].g++;
-            single_frequencies [one.b].b++;
-            single_frequencies [two.r].r++;
-            single_frequencies [two.g].g++;
-            single_frequencies [two.b].b++;
-            single_frequencies [three.r].r++;
-            single_frequencies [three.g].g++;
-            single_frequencies [three.b].b++;
-            single_frequencies [four.r].r++;
-            single_frequencies [four.g].g++;
-            single_frequencies [four.b].b++;
+            uvec3 singles [PIXELS];
+            uvec3 doubles [PIXELS * PIXELS];
+            for (int k = 0; k < PIXELS; k++)
+            {
+                singles [k] = uvec3(0);
+                for (int l = 0; l < PIXELS; l++)
+                {
+                    doubles [k * PIXELS + l] = uvec3(0);
+                }
+            }
 
-            joint_frequencies [one.r * uint(PIXELS) + two.r].r++;
-            joint_frequencies [one.g * uint(PIXELS) + two.g].g++;
-            joint_frequencies [one.b * uint(PIXELS) + two.b].b++;
-            joint_frequencies [one.r * uint(PIXELS) + three.r].r++;
-            joint_frequencies [one.g * uint(PIXELS) + three.g].g++;
-            joint_frequencies [one.b * uint(PIXELS) + three.b].b++;
-            joint_frequencies [one.r * uint(PIXELS) + four.r].r++;
-            joint_frequencies [one.g * uint(PIXELS) + four.g].g++;
-            joint_frequencies [one.b * uint(PIXELS) + four.b].b++;
+            // Loop over windows
+            for (int r = i; r <= i + 1; r++)
+            {
+                for (int c = j; c <= j + 1; c++)
+                {
+                    uvec3 current = imageLoad(original, ivec2(r, c)).rgb;
+                    if (singles [current.r].r == uint(0))
+                    {
+                        for (int f = 0; f < PIXELS; f++)
+                        {
+                            if (singles [f].r == uint(1))
+                            {
+                                doubles [current.r] [f] = uint(1);
+                                doubles [f] [current.r] = uint(1);
+                            }
+                        }
+                        singles [current.r].r = uint(1);
+                    }
+                    if (singles [current.g].g == uint(0))
+                    {
+                        for (int f = 0; f < PIXELS; f++)
+                        {
+                            if (singles [f].g == uint(1))
+                            {
+                                doubles [current.g] [f] = uint(1);
+                                doubles [f] [current.g] = uint(1);
+                            }
+                        }
+                        singles [current.g].g = uint(1);
+                    }
+                    if (singles [current.b].b == uint(0))
+                    {
+                        for (int f = 0; f < PIXELS; f++)
+                        {
+                            if (singles [f].b == uint(1))
+                            {
+                                doubles [current.b] [f] = uint(1);
+                                doubles [f] [current.b] = uint(1);
+                            }
+                        }
+                        singles [current.b].b = uint(1);
+                    }
+                }
+            }
 
-            joint_frequencies [two.r * uint(PIXELS) + one.r].r++;
-            joint_frequencies [two.g * uint(PIXELS) + one.g].g++;
-            joint_frequencies [two.b * uint(PIXELS) + one.b].b++;
-            joint_frequencies [two.r * uint(PIXELS) + three.r].r++;
-            joint_frequencies [two.g * uint(PIXELS) + three.g].g++;
-            joint_frequencies [two.b * uint(PIXELS) + three.b].b++;
-            joint_frequencies [two.r * uint(PIXELS) + four.r].r++;
-            joint_frequencies [two.g * uint(PIXELS) + four.g].g++;
-            joint_frequencies [two.b * uint(PIXELS) + four.b].b++;
-
-            joint_frequencies [three.r * uint(PIXELS) + one.r].r++;
-            joint_frequencies [three.g * uint(PIXELS) + one.g].g++;
-            joint_frequencies [three.b * uint(PIXELS) + one.b].b++;
-            joint_frequencies [three.r * uint(PIXELS) + two.r].r++;
-            joint_frequencies [three.g * uint(PIXELS) + two.g].g++;
-            joint_frequencies [three.b * uint(PIXELS) + two.b].b++;
-            joint_frequencies [three.r * uint(PIXELS) + four.r].r++;
-            joint_frequencies [three.g * uint(PIXELS) + four.g].g++;
-            joint_frequencies [three.b * uint(PIXELS) + four.b].b++;
-
-            joint_frequencies [four.r * uint(PIXELS) + one.r].r++;
-            joint_frequencies [four.g * uint(PIXELS) + one.g].g++;
-            joint_frequencies [four.b * uint(PIXELS) + one.b].b++;
-            joint_frequencies [four.r * uint(PIXELS) + two.r].r++;
-            joint_frequencies [four.g * uint(PIXELS) + two.g].g++;
-            joint_frequencies [four.b * uint(PIXELS) + two.b].b++;
-            joint_frequencies [four.r * uint(PIXELS) + three.r].r++;
-            joint_frequencies [four.g * uint(PIXELS) + three.g].g++;
-            joint_frequencies [four.b * uint(PIXELS) + three.b].b++;
-        }
-        // Handle 2x3 left/right side
-        else
-        {
-
+            for (int k = 0; k < PIXELS; k++)
+            {
+                if (singles [k].r == uint(1)) { single_frequencies [k].r++; }
+                if (singles [k].g == uint(1)) { single_frequencies [k].g++; }
+                if (singles [k].b == uint(1)) { single_frequencies [k].b++; }
+                for (int l = 0; l < PIXELS; l++)
+                {
+                    if (doubles [k * PIXELS + l].r == uint(1)) { joint_frequencies [k * PIXELS + l].r++; }
+                    if (doubles [k * PIXELS + l].g == uint(1)) { joint_frequencies [k * PIXELS + l].g++; }
+                    if (doubles [k * PIXELS + l].b == uint(1)) { joint_frequencies [k * PIXELS + l].b++; }
+                }
+            }
         }
     }
-    else
+
+    uvec3 high = uvec3(0);
+    uvec3 mx = uvec3(0);
+    uvec3 mn = uvec3(0);
+    for (int i = 0; i < PIXELS; i++)
     {
-        // Handle 3x2 top/bottom side
-        if (cr - cl == 2)
+        for (int j = i; j < PIXELS; j++)
         {
-
-        }
-        // Handle 3x3 base case
-        else
-        {
-
+            uint r = uint(i);
+            uint c = uint(j);
+            uvec3 current = joint_frequencies [i * PIXELS + j];
+            if (current.r > high.r)
+            {
+                mx.r = c;
+                mn.r = r;
+                high.r = current.r;
+            }
+            if (current.g > high.g)
+            {
+                mx.g = c;
+                mn.g = r;
+                high.g = current.g;
+            }
+            if (current.b > high.b)
+            {
+                mx.b = c;
+                mn.b = r;
+                high.b = current.b;
+            }
         }
     }
     
-    uvec4 write = uvec4(uvec3(0), imageLoad(original, index).a);
+    uvec4 write = uvec4(mx - mn, imageLoad(original, index).a);
     imageStore(modified, index, write);
 }
