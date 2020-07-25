@@ -1,0 +1,123 @@
+#version 310 es
+
+layout(local_size_x = 8, local_size_y = 8) in;
+
+layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
+layout(binding = 1, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
+
+#define PIXELS 256
+
+void main()
+{
+    // Retrieve current index and image size
+    ivec2 index = ivec2(gl_GlobalInvocationID.xy);
+    ivec2 size = imageSize(original);
+
+    // Create and clear lists for storing single/joint occurrences
+    uvec3 single_frequencies [PIXELS];
+    uvec3 joint_frequencies [PIXELS * PIXELS];
+    for (int i = 0; i < PIXELS; i++)
+    {
+        single_frequencies [i] = uvec3(0);
+        for (int j = 0; j < PIXELS; j++)
+        {
+            joint_frequencies [i * PIXELS + j] = uvec3(0);
+        }
+    }
+
+    // Get bounds of 3x3 square
+    int rl = index.x;
+    if (index.x > 0) { rl = index.x - 1; }
+    int rr = index.x;
+    if (index.x < size.x - 1) { rr = index.x + 1; }
+    int cl = index.y;
+    if (index.y > 0) { cl = index.y - 1; }
+    int cr = index.y;
+    if (index.y < size.y - 1) { cr = index.y + 1; }
+
+    if (rr - rl == 2)
+    {
+        // Handle 2x2 corners
+        if (cr - cl == 2)
+        {
+            uvec4 one = imageLoad(original, ivec2(rr, cr));
+            uvec4 two = imageLoad(original, ivec2(rr + 1, cr));
+            uvec4 three = imageLoad(original, ivec2(rr, cr + 1));
+            uvec4 four = imageLoad(original, ivec2(rr + 1, cr + 1));
+            
+            single_frequencies [one.r].r++;
+            single_frequencies [one.g].g++;
+            single_frequencies [one.b].b++;
+            single_frequencies [two.r].r++;
+            single_frequencies [two.g].g++;
+            single_frequencies [two.b].b++;
+            single_frequencies [three.r].r++;
+            single_frequencies [three.g].g++;
+            single_frequencies [three.b].b++;
+            single_frequencies [four.r].r++;
+            single_frequencies [four.g].g++;
+            single_frequencies [four.b].b++;
+
+            joint_frequencies [one.r * uint(PIXELS) + two.r].r++;
+            joint_frequencies [one.g * uint(PIXELS) + two.g].g++;
+            joint_frequencies [one.b * uint(PIXELS) + two.b].b++;
+            joint_frequencies [one.r * uint(PIXELS) + three.r].r++;
+            joint_frequencies [one.g * uint(PIXELS) + three.g].g++;
+            joint_frequencies [one.b * uint(PIXELS) + three.b].b++;
+            joint_frequencies [one.r * uint(PIXELS) + four.r].r++;
+            joint_frequencies [one.g * uint(PIXELS) + four.g].g++;
+            joint_frequencies [one.b * uint(PIXELS) + four.b].b++;
+
+            joint_frequencies [two.r * uint(PIXELS) + one.r].r++;
+            joint_frequencies [two.g * uint(PIXELS) + one.g].g++;
+            joint_frequencies [two.b * uint(PIXELS) + one.b].b++;
+            joint_frequencies [two.r * uint(PIXELS) + three.r].r++;
+            joint_frequencies [two.g * uint(PIXELS) + three.g].g++;
+            joint_frequencies [two.b * uint(PIXELS) + three.b].b++;
+            joint_frequencies [two.r * uint(PIXELS) + four.r].r++;
+            joint_frequencies [two.g * uint(PIXELS) + four.g].g++;
+            joint_frequencies [two.b * uint(PIXELS) + four.b].b++;
+
+            joint_frequencies [three.r * uint(PIXELS) + one.r].r++;
+            joint_frequencies [three.g * uint(PIXELS) + one.g].g++;
+            joint_frequencies [three.b * uint(PIXELS) + one.b].b++;
+            joint_frequencies [three.r * uint(PIXELS) + two.r].r++;
+            joint_frequencies [three.g * uint(PIXELS) + two.g].g++;
+            joint_frequencies [three.b * uint(PIXELS) + two.b].b++;
+            joint_frequencies [three.r * uint(PIXELS) + four.r].r++;
+            joint_frequencies [three.g * uint(PIXELS) + four.g].g++;
+            joint_frequencies [three.b * uint(PIXELS) + four.b].b++;
+
+            joint_frequencies [four.r * uint(PIXELS) + one.r].r++;
+            joint_frequencies [four.g * uint(PIXELS) + one.g].g++;
+            joint_frequencies [four.b * uint(PIXELS) + one.b].b++;
+            joint_frequencies [four.r * uint(PIXELS) + two.r].r++;
+            joint_frequencies [four.g * uint(PIXELS) + two.g].g++;
+            joint_frequencies [four.b * uint(PIXELS) + two.b].b++;
+            joint_frequencies [four.r * uint(PIXELS) + three.r].r++;
+            joint_frequencies [four.g * uint(PIXELS) + three.g].g++;
+            joint_frequencies [four.b * uint(PIXELS) + three.b].b++;
+        }
+        // Handle 2x3 left/right side
+        else
+        {
+
+        }
+    }
+    else
+    {
+        // Handle 3x2 top/bottom side
+        if (cr - cl == 2)
+        {
+
+        }
+        // Handle 3x3 base case
+        else
+        {
+
+        }
+    }
+    
+    uvec4 write = uvec4(uvec3(0), imageLoad(original, index).a);
+    imageStore(modified, index, write);
+}

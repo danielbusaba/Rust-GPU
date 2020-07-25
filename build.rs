@@ -9,6 +9,7 @@ fn main() -> Result<(), Box<dyn Error>>
     println!("cargo:rerun-if-changed=shaders/div16.comp");
     println!("cargo:rerun-if-changed=shaders/max_diff.comp");
     println!("cargo:rerun-if-changed=shaders/center_diff.comp");
+    println!("cargo:rerun-if-changed=shaders/affinity.comp");
     println!("cargo:rerun-if-changed=shaders/saturate.comp");
     println!("cargo:rerun-if-changed=shaders/minmax.comp");
 

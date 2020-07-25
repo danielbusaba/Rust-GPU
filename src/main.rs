@@ -32,11 +32,17 @@ async fn run()
         limits: wgpu::Limits::default()
     });
 
-    // Retrieve shader module
+    // Retrieve shader modules
+    let div16 = include_bytes!("../spv/div16.comp.spv");
+    let div16 = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&div16[..])).expect("Failed to load div16 shader"));
+    let max_diff = include_bytes!("../spv/max_diff.comp.spv");
+    let max_diff = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&max_diff[..])).expect("Failed to load max_diff shader"));
+    let center_diff = include_bytes!("../spv/center_diff.comp.spv");
+    let center_diff = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&center_diff[..])).expect("Failed to load center_diff shader"));
     let minmax = include_bytes!("../spv/minmax.comp.spv");
-    let minmax = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&minmax[..])).unwrap());
+    let minmax = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&minmax[..])).expect("Failed to load minmax shader"));
     let saturate = include_bytes!("../spv/saturate.comp.spv");
-    let saturate = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&saturate[..])).unwrap());
+    let saturate = device.create_shader_module(&wgpu::read_spirv(std::io::Cursor::new(&saturate[..])).expect("Failed to load saturate shader"));
 
     // Copy image buffer to device
     let buffer = device.create_buffer_mapped(

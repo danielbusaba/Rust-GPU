@@ -5,6 +5,8 @@ layout(local_size_x = 8, local_size_y = 8) in;
 layout(binding = 0, rgba8ui) restrict readonly uniform lowp uimage2D original;
 layout(binding = 1, rgba8ui) restrict writeonly uniform lowp uimage2D modified;
 
+#define PIXELS 256
+
 void main()
 {
     ivec2 index = ivec2(gl_GlobalInvocationID.xy);
@@ -20,7 +22,7 @@ void main()
     if (index.y < size.y - 1) { cr = index.y + 1; }
 
     uvec3 maximum = uvec3(0);
-    uvec3 minimum = uvec3(255);
+    uvec3 minimum = uvec3(PIXELS - 1);
     for (int i = rl; i < rr; i++)
     {
         for (int j = cl; j < cr; j++)

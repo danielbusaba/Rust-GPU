@@ -10,11 +10,13 @@ layout(binding = 2, std140) buffer MinMax
     uvec4 maximum;
 } minmax;
 
+#define PIXELS 256
+
 void main()
 {
     ivec2 index = ivec2(gl_GlobalInvocationID.xy);
     uvec4 pixel = imageLoad(original, index);
-    ivec3 scale = ivec3(255.0) / ivec3(minmax.maximum.rgb - minmax.minimum.rgb);
+    ivec3 scale = ivec3(PIXELS) / ivec3(minmax.maximum.rgb - minmax.minimum.rgb);
     uvec4 write = uvec4(ivec3(pixel.rgb - minmax.minimum.rgb) * scale, pixel.a);
     imageStore(modified, index, write);
 }
